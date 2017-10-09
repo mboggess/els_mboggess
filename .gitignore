@@ -1,1 +1,4 @@
 # Created artifacts
+
+# Slack script w/ secrets
+slack/*/index.js
