@@ -1,4 +1,5 @@
 # Created artifacts
+scripts/python/*.pyc
 
 # Slack script w/ secrets
 slack/*/index.js
