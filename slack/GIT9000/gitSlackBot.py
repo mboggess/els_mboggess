@@ -22,6 +22,7 @@ class GitSlackBot(object):
             self.token = config.get('Slack', 'token')
             self.botUserId = config.get('Slack', 'botUserId').lower()
             self.announcementChannels = config.get('Slack', 'announcementChannelIds').split(",")
+            print self.token + ' ' + self.botUserId + ' ' + ' '.join(self.announcementChannels)
 
         self.slack = SlackClient(self.token)
 	
@@ -61,6 +62,7 @@ class GitSlackBot(object):
     def handleSlackMessage(self, message):
         messageLength = len(message)
         if messageLength > 0:
+            print message
             messageJson = message[0]
 
             if ('text' in messageJson and 'channel' in messageJson and 'user' in messageJson and 'bot_id' not in messageJson) and not 'username' in messageJson:
@@ -68,26 +70,24 @@ class GitSlackBot(object):
                 messageText = messageJson['text'].encode('utf-8').lower()
                 messageUserEncoded = messageJson['user'].encode('utf-8').lower()
 
-                if (messageText.find(self.botUserId) > -1) and not messageUserEncoded == self.botUserId or messageChannel == "D7FF10DBK":
+                if (messageText.find(self.botUserId) > -1) and not messageUserEncoded == self.botUserId or messageChannel == "D7HJJND3Q":
                     
                     
                     if messageText.find('man') == 0 or messageText.find('help') > -1:
-                        self.postToSlack(messageChannel, "*Here is a Brief E2-D2 Synopsis:*\n")
+                        self.postToSlack(messageChannel, "*Here is a Brief GIT 9000 Synopsis:*\n")
 
-                        manMessage = "E2-D2 is an EdTech Bot Designed to Help Monitor and Orchestrate "
-                        manMessage += "Performance Testing within Elsevier.\n\n"
-                        manMessage += "For information on Performance Testing Methodologies see:\n"
-                        manMessage += "https://goo.gl/D8Y89T\n\n"
-                        manMessage += "*The Following Options are Available:*\n"
-                        manMessage += "1. `test limit`\n"
-                        manMessage += "       --Returns the test sample limit, in minutes, for each performance test\n"
-                        manMessage += "       --Example: @e2-d2 test limit\n"
+                        manMessage = "GIT 9000 is an EdTech bot designed to bring certain git workflows "
+                        manMessage += "to developers' and managers' fingertips.\n\n"
+                        manMessage += "*The following options are available:*\n"
+                        manMessage += "1. `repos`\n"
+                        manMessage += "       --Returns all repos for the elsevierPTG organization\n"
+                        manMessage += "       --Example: @git-9000 repos\n"
 
                         self.postToSlack(messageChannel, manMessage)
-                    elif messageText.find('test') > -1 and messageText.find('limit') > -1:
-                        self.postToSlack(messageChannel, "60 minutes")
+                    elif messageText.find('repos') > -1:
+                        self.postToSlack(messageChannel, "This will return all available repos")
                     else:
-                        self.postToSlack(messageChannel, "I am E2-D2, I am here to help monitor and orchestrate performance tests.")
+                        self.postToSlack(messageChannel, "I am GIT 9000. I am here to facilitate git workflows.")
 
 
     @classmethod 
