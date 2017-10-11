@@ -3,3 +3,4 @@
 *.pyc
 *.cfg
 Pipfile*
+.idea/*
