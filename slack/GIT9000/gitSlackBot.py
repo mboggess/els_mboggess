@@ -113,39 +113,31 @@ class GitSlackBot(object):
 
                         self.postToSlack(messageChannel, manMessage)
                     elif messageText.find('repos') > -1:
-                        reposList = self.getListOfGitItems('repos', '', 'name')
-                        message = self.createMessageFromList(reposList)
+                        message = self.getListOfGitItems('repos', '', 'name')
                         self.postToSlack(messageChannel, message)
                     elif messageText.find('branches') > -1 \
                             and messageText.find('active branches') == -1 \
                             and messageText.find('stale branches') == -1:
                         repo = messageText.replace('branches ', '')
-                        branchesList = self.getListOfGitItems('branches', repo, 'name')
-                        message = self.createMessageFromList(branchesList)
+                        message = self.getListOfGitItems('branches', repo, 'name')
                         self.postToSlack(messageChannel, message)
                     elif messageText.find('active') > -1:
                         repo = messageText.replace('active branches ', '')
                         branchesList = self.getListOfGitItems('branches', repo, 'name')
-
                         statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'active')
-
                         self.postToSlack(messageChannel, statusOutput)
                     elif messageText.find('stale') > -1:
                         repo = messageText.replace('stale branches ', '')
                         branchesList = self.getListOfGitItems('branches', repo, 'name')
-
                         statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'stale')
-
                         self.postToSlack(messageChannel, statusOutput)
                     elif messageText.find('diff tags') > -1:
                         repo,tagA,tagB = messageText.replace('diff tags ', '').split()
-                        commitsList, totalCommits = self.getGitChangelogBetweenTags(repo, tagA, tagB)
-
-                        self.postToSlack(messageChannel, commitsList + 'Number of branches: ' + str(totalCommits))
+                        message = self.getGitChangelogBetweenTags(repo, tagA, tagB)
+                        self.postToSlack(messageChannel, message)
                     elif messageText.find('tags') > -1:
                         repo = messageText.replace('tags ', '')
-                        tagsList = self.getListOfGitItems('tags', repo, 'name')
-                        message = self.createMessageFromList(tagsList)
+                        message = self.getListOfGitItems('tags', repo, 'name')
                         self.postToSlack(messageChannel, message)
                     else:
                         self.postToSlack(messageChannel, 'I am GIT 9000. I am here to facilitate <https://git-scm.com|git> workflows.')
@@ -178,7 +170,7 @@ class GitSlackBot(object):
             as_user=True
         )
 
-        print ' Message Sent To Channel: ' + messageChannel + ' - ' + message
+        print ' Message sent to channel: ' + messageChannel + ' - ' + message
 
 
     def getNumPages(self, gitURL):
@@ -214,11 +206,15 @@ class GitSlackBot(object):
             except:
                 sys.exit(gitURL + ' is not a valid URL')
 
-            itemKeyArray = [x[jsonKey] for x in itemDict]
-            for item in range(0, len(itemKeyArray)):
-                keyList.append('`' + itemKeyArray[item] + '`')
+            if itemDict['message']:
+                message = 'Invalid name: ' + itemName + '.\nPerhaps check your spelling, and try again.\n'
+            else:
+                itemKeyArray = [x[jsonKey] for x in itemDict]
+                for item in range(0, len(itemKeyArray)):
+                    keyList.append('`' + itemKeyArray[item] + '`')
+                message = self.createMessageFromList(keyList)
 
-        return keyList
+        return message
 
 
     def getRepoBranchesStatus(self, repo, branchesList, status):
@@ -268,7 +264,7 @@ class GitSlackBot(object):
     def getGitChangelogBetweenTags(self, repo, tagA, tagB):
         gitURL = 'https://api.github.com/repos/elsevierPTG/' + repo + '/compare/' + tagA + '...' + tagB
 
-        changeLog = ''
+        changeLog = []
         numPages = self.getNumPages(gitURL)
 
         for page in range (1, numPages+1):
@@ -278,16 +274,16 @@ class GitSlackBot(object):
             except:
                 sys.exit(gitURL + ' is not a valid URL')
 
-            totalCommits = itemDict['total_commits']
             commitsArray = itemDict['commits']
 
             for commit in range(0, len(commitsArray)):
                 sha = commitsArray[commit]['sha'][0:6]
                 message = commitsArray[commit]['commit']['message'].strip('\n')
-                message2 = message.replace('\n', ' ')
-                changeLog += '* `' + sha + '` ' + message2 + '\n'
+                changeLog.append('* `' + sha + '` ' + message.replace('\n', ' ') + '\n')
 
-        return changeLog, totalCommits
+        output = self.createMessageFromList(changeLog)
+
+        return output
 
 
     def createMessageFromList(self, list):
