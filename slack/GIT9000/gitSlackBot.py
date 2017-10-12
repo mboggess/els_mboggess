@@ -113,31 +113,49 @@ class GitSlackBot(object):
 
                         self.postToSlack(messageChannel, manMessage)
                     elif messageText.find('repos') > -1:
-                        message = self.getListOfGitItems('repos', '', 'name')
+                        message = self.getGitItemsListLength('repos', '', 'name')
                         self.postToSlack(messageChannel, message)
-                    elif messageText.find('branches') > -1 \
+                    elif messageText.find('branches ') > -1 \
                             and messageText.find('active branches') == -1 \
                             and messageText.find('stale branches') == -1:
                         repo = messageText.replace('branches ', '')
-                        message = self.getListOfGitItems('branches', repo, 'name')
+                        message = self.getGitItemsListLength('branches', repo, 'name')
                         self.postToSlack(messageChannel, message)
-                    elif messageText.find('active') > -1:
+                    elif messageText.find('active branches ') > -1:
                         repo = messageText.replace('active branches ', '')
                         branchesList = self.getListOfGitItems('branches', repo, 'name')
-                        statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'active')
+                        if branchesList[0] == 'Invalid':
+                            statusOutput = 'Invalid repo: ' + repo + '.\nPerhaps check your spelling, and try again.\n'
+                        else:
+                            statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'active')
                         self.postToSlack(messageChannel, statusOutput)
-                    elif messageText.find('stale') > -1:
+                    elif messageText.find('stale branches ') > -1:
                         repo = messageText.replace('stale branches ', '')
                         branchesList = self.getListOfGitItems('branches', repo, 'name')
-                        statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'stale')
+                        if branchesList[0] == 'Invalid':
+                            statusOutput = 'Invalid repo: ' + repo + '.\nPerhaps check your spelling, and try again.\n'
+                        else:
+                            statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'stale')
                         self.postToSlack(messageChannel, statusOutput)
-                    elif messageText.find('diff tags') > -1:
-                        repo,tagA,tagB = messageText.replace('diff tags ', '').split()
-                        message = self.getGitChangelogBetweenTags(repo, tagA, tagB)
+                    elif messageText.find('diff tags ') > -1:
+                        missingOptions = False
+                        try:
+                            repo,tagA,tagB = messageText.replace('diff tags ', '').split()
+                        except:
+                            missingOptions = True
+
+                        if missingOptions:
+                            message = ':-1: Must give repo and two tags to diff!'
+                        else:
+                            changeLog = self.getGitChangelogBetweenTags(repo, tagA, tagB)
+                            if changeLog[0] == 'Invalid':
+                                message = 'Invalid repo or tagA or tagB'
+                            else:
+                                message = self.createMessageFromList(changeLog)
                         self.postToSlack(messageChannel, message)
-                    elif messageText.find('tags') > -1:
+                    elif messageText.find('tags ') > -1:
                         repo = messageText.replace('tags ', '')
-                        message = self.getListOfGitItems('tags', repo, 'name')
+                        message = self.getGitItemsListLength('tags', repo, 'name')
                         self.postToSlack(messageChannel, message)
                     else:
                         self.postToSlack(messageChannel, 'I am GIT 9000. I am here to facilitate <https://git-scm.com|git> workflows.')
@@ -186,6 +204,37 @@ class GitSlackBot(object):
         return int(pages)
 
 
+    def getGitItemsListLength(self, itemType, itemName, jsonKey):
+        if itemType == 'repos':
+            gitURL = 'https://api.github.com/orgs/elsevierPTG/' + itemType
+        elif itemType == 'branches':
+            gitURL = 'https://api.github.com/repos/elsevierPTG/' + itemName + '/' + itemType
+        elif itemType == 'tags':
+            gitURL = 'https://api.github.com/repos/elsevierPTG/' + itemName + '/' + itemType
+        else:
+            sys.exit('Need a new itemType in getListOfGitItems')
+
+        keyList = []
+        numPages = self.getNumPages(gitURL)
+
+        for page in range(1, numPages+1):
+            try:
+                itemDict = requests.get(gitURL + '?page=' + str(page),
+                                        auth=(self.gitUser, self.gitUserToken)).json()
+            except:
+                sys.exit(gitURL + ' is not a valid URL')
+
+            if 'message' in itemDict and \
+                    itemDict['message'] == 'Not Found':
+                message = 'Invalid name: ' + itemName + '.\nPerhaps check your spelling, and try again.\n'
+            else:
+                itemKeyArray = [x[jsonKey] for x in itemDict]
+                for item in range(0, len(itemKeyArray)):
+                    keyList.append('`' + itemKeyArray[item] + '`')
+                message = self.createMessageFromList(keyList)
+
+        return message
+
     def getListOfGitItems(self, itemType, itemName, jsonKey):
         if itemType == 'repos':
             gitURL = 'https://api.github.com/orgs/elsevierPTG/' + itemType
@@ -206,19 +255,25 @@ class GitSlackBot(object):
             except:
                 sys.exit(gitURL + ' is not a valid URL')
 
-            if itemDict['message']:
-                message = 'Invalid name: ' + itemName + '.\nPerhaps check your spelling, and try again.\n'
+            if 'message' in itemDict and \
+                    itemDict['message'] == 'Not Found':
+                keyList.append('Invalid')
             else:
                 itemKeyArray = [x[jsonKey] for x in itemDict]
                 for item in range(0, len(itemKeyArray)):
                     keyList.append('`' + itemKeyArray[item] + '`')
-                message = self.createMessageFromList(keyList)
 
-        return message
+        return keyList
 
 
     def getRepoBranchesStatus(self, repo, branchesList, status):
         branchStatusOutput = ''
+
+        if status == 'active':
+            branchStatusOutput += '*Active branches*\n'
+        else:
+            branchStatusOutput += '*STALE branches*\n'
+
         # three months in seconds
         active_limit = 7890000
 
@@ -234,7 +289,6 @@ class GitSlackBot(object):
 
             if status == 'active' \
                 and diff <= active_limit:
-                branchStatusOutput += '*Active branches*\n'
                 staleCountDown = 90 - (datetime.now() - datetime.strptime(lastCommit, '%Y-%m-%dT%H:%M:%SZ')).days
                 branchStatusOutput += branch + ' stale in ' + str(staleCountDown) + ' days\n'
             elif status == 'active' \
@@ -242,7 +296,6 @@ class GitSlackBot(object):
                 continue
             elif status == 'stale' \
                 and diff > active_limit:
-                branchStatusOutput += '*STALE branches*\n'
                 staleCountUp = (datetime.now() - datetime.strptime(lastCommit, '%Y-%m-%dT%H:%M:%SZ')).days - 90
                 branchStatusOutput += branch + ' has been STALE for ' + str(staleCountUp) + ' days\n'
             elif status == 'stale' \
@@ -274,16 +327,18 @@ class GitSlackBot(object):
             except:
                 sys.exit(gitURL + ' is not a valid URL')
 
-            commitsArray = itemDict['commits']
+            if 'message' in itemDict and \
+                itemDict['message'] == 'Not Found':
+                changeLog.append('Invalid')
+            else:
+                commitsArray = itemDict['commits']
 
-            for commit in range(0, len(commitsArray)):
-                sha = commitsArray[commit]['sha'][0:6]
-                message = commitsArray[commit]['commit']['message'].strip('\n')
-                changeLog.append('* `' + sha + '` ' + message.replace('\n', ' ') + '\n')
+                for commit in range(0, len(commitsArray)):
+                    sha = commitsArray[commit]['sha'][0:6]
+                    message = commitsArray[commit]['commit']['message'].strip('\n')
+                    changeLog.append('* `' + sha + '` ' + message.replace('\n', ' ') + '\n')
 
-        output = self.createMessageFromList(changeLog)
-
-        return output
+        return changeLog
 
 
     def createMessageFromList(self, list):
