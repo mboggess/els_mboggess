@@ -8,7 +8,7 @@ from slackclient import SlackClient
 import requests
 import re
 import sys
-from operator import itemgetter
+from datetime import datetime
 
 
 class GitSlackBot(object):
@@ -116,20 +116,27 @@ class GitSlackBot(object):
                         reposList, reposLength = self.getListOfGitItems('repos', '', 'name')
 
                         self.postToSlack(messageChannel, reposList + 'Number of repos: ' + str(reposLength))
-                    elif messageText.find('branches') > -1:
+                    elif messageText.find('branches') > -1 \
+                            and messageText.find('active branches') == -1 \
+                            and messageText.find('stale branches') == -1:
                         repo = messageText.replace('branches ', '')
-                        branchesList, branchesLength = self.getListOfGitItems('branches', repo, 'name')
-
-                        self.postToSlack(messageChannel, branchesList + 'Number of branches: ' + str(branchesLength))
+                        branchesList = self.getListOfGitItems('branches', repo, 'name')
+                        message = self.createMessageFromList(branchesList)
+                        self.postToSlack(messageChannel, message)
                     elif messageText.find('active') > -1:
-                        repo = messageText.replace('active ', '')
+                        repo = messageText.replace('active branches ', '')
+                        branchesList = self.getListOfGitItems('branches', repo, 'name')
 
+                        statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'active')
 
-
-                        self.postToSlack(messageChannel, 'This will return a list of all active branches for repo `' + repo + '`')
+                        self.postToSlack(messageChannel, statusOutput)
                     elif messageText.find('stale') > -1:
-                        repo = messageText.replace('stale ', '')
-                        self.postToSlack(messageChannel, 'This will return a list of all stale branches for repo `' + repo + '`')
+                        repo = messageText.replace('stale branches ', '')
+                        branchesList = self.getListOfGitItems('branches', repo, 'name')
+
+                        statusOutput = self.getRepoBranchesStatus(repo, branchesList, 'stale')
+
+                        self.postToSlack(messageChannel, statusOutput)
                     elif messageText.find('diff tags') > -1:
                         repo,tagA,tagB = messageText.replace('diff tags ', '').split()
                         commitsList, totalCommits = self.getGitChangelogBetweenTags(repo, tagA, tagB)
@@ -159,6 +166,7 @@ class GitSlackBot(object):
 
         return str(timeInfo[index])
 
+
     def postToSlack(self, messageChannel, message):
         sleep(0.5)
         self.slack.api_call(
@@ -172,17 +180,19 @@ class GitSlackBot(object):
 
         print ' Message Sent To Channel: ' + messageChannel + ' - ' + message
 
+
     def getNumPages(self, gitURL):
         try:
             r = requests.get(gitURL, auth=(self.gitUser, self.gitUserToken))
         except:
-            sys.exit(gitURL + 'is not a valid URL')
+            sys.exit(gitURL + ' is not a valid URL')
         try:
             pages = re.findall('\d+', r.headers['Link'].split('?')[2])[0]
         except:
             pages = 1
 
         return int(pages)
+
 
     def getListOfGitItems(self, itemType, itemName, jsonKey):
         if itemType == 'repos':
@@ -192,10 +202,9 @@ class GitSlackBot(object):
         elif itemType == 'tags':
             gitURL = 'https://api.github.com/repos/elsevierPTG/' + itemName + '/' + itemType
         else:
-            sys.exit("Need a new itemType in getListOfGitItems")
+            sys.exit('Need a new itemType in getListOfGitItems')
 
-        keyList = ''
-        keyLength = 0
+        keyList = []
         numPages = self.getNumPages(gitURL)
 
         for page in range(1, numPages+1):
@@ -206,11 +215,55 @@ class GitSlackBot(object):
                 sys.exit(gitURL + ' is not a valid URL')
 
             itemKeyArray = [x[jsonKey] for x in itemDict]
-            keyLength += len(itemKeyArray)
             for item in range(0, len(itemKeyArray)):
-                keyList += '`' + itemKeyArray[item] + '`\n'
+                keyList.append('`' + itemKeyArray[item] + '`')
 
-        return keyList, keyLength
+        return keyList
+
+
+    def getRepoBranchesStatus(self, repo, branchesList, status):
+        branchStatusOutput = ''
+        # three months in seconds
+        active_limit = 7890000
+
+        for branch in branchesList:
+            gitURL = 'https://api.github.com/repos/elsevierPTG/' + repo + '/branches/' + branch.replace('`', '')
+            try:
+                dict = requests.get(gitURL, auth=(self.gitUser, self.gitUserToken)).json()
+            except:
+                sys.exit(gitURL + ' is not a valid URL')
+
+            lastCommit = dict['commit']['commit']['author']['date']
+            diff = int((datetime.now() - datetime.strptime(lastCommit, '%Y-%m-%dT%H:%M:%SZ')).total_seconds())
+
+            if status == 'active' \
+                and diff <= active_limit:
+                branchStatusOutput += '*Active branches*\n'
+                staleCountDown = 90 - (datetime.now() - datetime.strptime(lastCommit, '%Y-%m-%dT%H:%M:%SZ')).days
+                branchStatusOutput += branch + ' stale in ' + str(staleCountDown) + ' days\n'
+            elif status == 'active' \
+                and diff > active_limit:
+                continue
+            elif status == 'stale' \
+                and diff > active_limit:
+                branchStatusOutput += '*STALE branches*\n'
+                staleCountUp = (datetime.now() - datetime.strptime(lastCommit, '%Y-%m-%dT%H:%M:%SZ')).days - 90
+                branchStatusOutput += branch + ' has been STALE for ' + str(staleCountUp) + ' days\n'
+            elif status == 'stale' \
+                and diff <= active_limit:
+                continue
+            else:
+                sys.exit('Status ' + status + ' or diff ' + str(diff) + \
+                         ' missed by check in getRepoBranchesStatus for branch ' + branch)
+
+        if branchStatusOutput == '':
+            if status == 'active':
+                branchStatusOutput += 'NO active branches for repo `' + repo + '`\n'
+            else:
+                branchStatusOutput += 'No STALE branches for repo `' + repo + '`\n'
+
+        return branchStatusOutput
+
 
     def getGitChangelogBetweenTags(self, repo, tagA, tagB):
         gitURL = 'https://api.github.com/repos/elsevierPTG/' + repo + '/compare/' + tagA + '...' + tagB
@@ -235,3 +288,14 @@ class GitSlackBot(object):
                 changeLog += '* `' + sha + '` ' + message2 + '\n'
 
         return changeLog, totalCommits
+
+
+    def createMessageFromList(self, list):
+        if not list:
+            message = ''
+            for item in list:
+                message += item + '\n'
+            message += 'Number of items: ' + len(list)
+        else:
+            message = 'No items found'
+        return message
