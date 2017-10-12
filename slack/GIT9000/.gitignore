@@ -1,0 +1,7 @@
+# Ignore compiled Python files and config files
+
+*.pyc
+*.cfg
+Pipfile*
+.idea/*
+*.txt
