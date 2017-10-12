@@ -144,9 +144,9 @@ class GitSlackBot(object):
                         self.postToSlack(messageChannel, commitsList + 'Number of branches: ' + str(totalCommits))
                     elif messageText.find('tags') > -1:
                         repo = messageText.replace('tags ', '')
-                        tagsList, tagsLength = self.getListOfGitItems('tags', repo, 'name')
-
-                        self.postToSlack(messageChannel, tagsList + 'Number of tags: ' + str(tagsLength))
+                        tagsList = self.getListOfGitItems('tags', repo, 'name')
+                        message = self.createMessageFromList(tagsList)
+                        self.postToSlack(messageChannel, message)
                     else:
                         self.postToSlack(messageChannel, 'I am GIT 9000. I am here to facilitate <https://git-scm.com|git> workflows.')
 
@@ -291,11 +291,11 @@ class GitSlackBot(object):
 
 
     def createMessageFromList(self, list):
-        if not list:
+        if list != []:
             message = ''
             for item in list:
                 message += item + '\n'
-            message += 'Number of items: ' + len(list)
+            message += 'Number of items: ' + str(len(list))
         else:
             message = 'No items found'
         return message
