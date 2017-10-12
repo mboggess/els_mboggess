@@ -141,7 +141,7 @@ class GitSlackBot(object):
 
                         self.postToSlack(messageChannel, tagsList + 'Number of tags: ' + str(tagsLength))
                     else:
-                        self.postToSlack(messageChannel, 'I am GIT 9000. I am here to facilitate git workflows.')
+                        self.postToSlack(messageChannel, 'I am GIT 9000. I am here to facilitate <https://git-scm.com|git> workflows.')
 
 
     @classmethod 
@@ -165,6 +165,8 @@ class GitSlackBot(object):
             'chat.postMessage',
             channel=messageChannel,
             text=message,
+            parse='none',
+            unfurl_links=False,
             as_user=True
         )
 
