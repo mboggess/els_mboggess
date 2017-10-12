@@ -39,14 +39,14 @@ class GitSlackBot(object):
         if connectionStatus:
             while connectionStatus:
                 if slackConnectionSuccessNotice is False:
-                    print self.getTime(0) + " -- App Connection to Slack established"
+                    print self.getTime(0) + ' -- App Connection to Slack Established'
                 message = []
 
                 try:
                     message = self.slack.rtm_read()
 
                 except OSError as e:
-                    print 'Slack RTM Read Error.'
+                    print 'Slack RTM Read Error'
                     print 'Original Exception Trace'
                     print e
                 
@@ -75,70 +75,73 @@ class GitSlackBot(object):
                 messageText = messageJson['text'].encode('utf-8').lower()
                 messageUserEncoded = messageJson['user'].encode('utf-8').lower()
 
-                if (messageText.find(self.botUserId) > -1) and not messageUserEncoded == self.botUserId or messageChannel == "D7HJJND3Q":
+                if (messageText.find(self.botUserId) > -1) and not messageUserEncoded == self.botUserId or messageChannel == 'D7HJJND3Q':
                     
                     
                     if messageText.find('man') == 0 or messageText.find('help') > -1:
-                        self.postToSlack(messageChannel, "*Here is a brief GIT 9000 Synopsis:*\n")
+                        self.postToSlack(messageChannel, '*Here is a brief GIT 9000 Synopsis:*\n')
 
-                        manMessage = "GIT 9000 is an EdTech bot designed to bring certain git workflows "
+                        manMessage = 'GIT 9000 is an EdTech bot designed to bring certain git workflows '
                         manMessage += "to developers' and managers' fingertips.\n\n"
-                        manMessage += "*The following options are available:*\n"
-                        manMessage += "- `repos`\n"
-                        manMessage += "       --Returns all repos for the elsevierPTG organization\n"
-                        manMessage += "       --Example: @git-9000 repos\n"
-                        manMessage += "- `branches`\n"
-                        manMessage += "       --Returns all branches for the given repo\n"
-                        manMessage += "       --Required: `$repo`\n"
-                        manMessage += "       --Example: @git-9000 branches eols-outcomes-integration\n"
-                        # For `active branches` and `stale branches`, could have optional "flag" delimiting
-                        # time that makes a branch "active" or "stale"
-                        manMessage += "- `active`\n"
-                        manMessage += "       --Returns all active branches for the given repo\n"
-                        manMessage += "       --Required: `$repo`\n"
-                        manMessage += "       --Example: @git-9000 active branches eols-outcomes-integration\n"
-                        manMessage += "- `stale`\n"
-                        manMessage += "       --Returns all stale branches for the given repo\n"
-                        manMessage += "       --Required: `$repo`\n"
-                        manMessage += "       --Example: @git-9000 stale branches eols-outcomes-integration\n"
-                        manMessage += "- `tags`\n"
-                        manMessage += "       --Returns all tags for the given repo\n"
-                        manMessage += "       --Required: `$repo`\n"
-                        manMessage += "       --Example: @git-9000 tags eols-outcomes-integration\n"
-                        manMessage += "- `diff tags`\n"
-                        manMessage += "       NOTE: GitHub API uses tag *names* not the associated commit hash\n"
-                        manMessage += "       --Returns a list of commits indicating the changelog between the given tags\n"
-                        manMessage += "       --Required: `$repo`, `$tagA` name, and `$tagB` name\n"
-                        manMessage += "       --Example: @git-9000 diff tags eols-outcomes-integration v1.0.13 v1.5.3\n"
+                        manMessage += '*The following options are available:*\n'
+                        manMessage += '- `repos`\n'
+                        manMessage += '       --Returns all repos for the elsevierPTG organization\n'
+                        manMessage += '       --Example: @git-9000 repos\n'
+                        manMessage += '- `branches`\n'
+                        manMessage += '       --Returns all branches for the given repo\n'
+                        manMessage += '       --Required: `$repo`\n'
+                        manMessage += '       --Example: @git-9000 branches eols-outcomes-integration\n'
+                        # For `active branches` and `stale branches`, could have optional 'flag' delimiting
+                        # time that makes a branch 'active' or 'stale'
+                        manMessage += '- `active`\n'
+                        manMessage += '       --Returns all active branches for the given repo\n'
+                        manMessage += '       --Required: `$repo`\n'
+                        manMessage += '       --Example: @git-9000 active branches eols-outcomes-integration\n'
+                        manMessage += '- `stale`\n'
+                        manMessage += '       --Returns all stale branches for the given repo\n'
+                        manMessage += '       --Required: `$repo`\n'
+                        manMessage += '       --Example: @git-9000 stale branches eols-outcomes-integration\n'
+                        manMessage += '- `tags`\n'
+                        manMessage += '       --Returns all tags for the given repo\n'
+                        manMessage += '       --Required: `$repo`\n'
+                        manMessage += '       --Example: @git-9000 tags eols-outcomes-integration\n'
+                        manMessage += '- `diff tags`\n'
+                        manMessage += '       NOTE: GitHub API uses tag *names* not the associated commit hash\n'
+                        manMessage += '       --Returns a list of commits indicating the changelog between the given tags\n'
+                        manMessage += '       --Required: `$repo`, `$tagA` name, and `$tagB` name\n'
+                        manMessage += '       --Example: @git-9000 diff tags eols-outcomes-integration v1.0.13 v1.5.3\n'
 
                         self.postToSlack(messageChannel, manMessage)
                     elif messageText.find('repos') > -1:
-                        reposList, reposLength = self.getListOfGitItems("repos", "", "name")
+                        reposList, reposLength = self.getListOfGitItems('repos', '', 'name')
 
-                        self.postToSlack(messageChannel, reposList + "Number of repos: " + str(reposLength))
+                        self.postToSlack(messageChannel, reposList + 'Number of repos: ' + str(reposLength))
                     elif messageText.find('branches') > -1:
                         repo = messageText.replace('branches ', '')
-                        branchesList, branchesLength = self.getListOfGitItems("branches", repo, "name")
+                        branchesList, branchesLength = self.getListOfGitItems('branches', repo, 'name')
 
-                        self.postToSlack(messageChannel, branchesList + "Number of branches: " + str(branchesLength))
+                        self.postToSlack(messageChannel, branchesList + 'Number of branches: ' + str(branchesLength))
                     elif messageText.find('active') > -1:
                         repo = messageText.replace('active ', '')
-                        self.postToSlack(messageChannel, "This will return a list of all active branches for repo `" + repo + "`")
+
+
+
+                        self.postToSlack(messageChannel, 'This will return a list of all active branches for repo `' + repo + '`')
                     elif messageText.find('stale') > -1:
                         repo = messageText.replace('stale ', '')
-                        self.postToSlack(messageChannel, "This will return a list of all stale branches for repo `" + repo + "`")
+                        self.postToSlack(messageChannel, 'This will return a list of all stale branches for repo `' + repo + '`')
                     elif messageText.find('diff tags') > -1:
                         repo,tagA,tagB = messageText.replace('diff tags ', '').split()
                         commitsList, totalCommits = self.getGitChangelogBetweenTags(repo, tagA, tagB)
 
-                        self.postToSlack(messageChannel, commitsList + "Number of branches: " + str(totalCommits))
+                        self.postToSlack(messageChannel, commitsList + 'Number of branches: ' + str(totalCommits))
                     elif messageText.find('tags') > -1:
                         repo = messageText.replace('tags ', '')
-                        tagsList, tagsLength = self.getListOfGitItems("tags", repo, "name")
+                        tagsList, tagsLength = self.getListOfGitItems('tags', repo, 'name')
 
-                        self.postToSlack(messageChannel, tagsList + "Number of tags: " + str(tagsLength))
+                        self.postToSlack(messageChannel, tagsList + 'Number of tags: ' + str(tagsLength))
                     else:
-                        self.postToSlack(messageChannel, "I am GIT 9000. I am here to facilitate git workflows.")
+                        self.postToSlack(messageChannel, 'I am GIT 9000. I am here to facilitate git workflows.')
 
 
     @classmethod 
