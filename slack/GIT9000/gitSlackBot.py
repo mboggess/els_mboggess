@@ -113,9 +113,9 @@ class GitSlackBot(object):
 
                         self.postToSlack(messageChannel, manMessage)
                     elif messageText.find('repos') > -1:
-                        reposList, reposLength = self.getListOfGitItems('repos', '', 'name')
-
-                        self.postToSlack(messageChannel, reposList + 'Number of repos: ' + str(reposLength))
+                        reposList = self.getListOfGitItems('repos', '', 'name')
+                        message = self.createMessageFromList(reposList)
+                        self.postToSlack(messageChannel, message)
                     elif messageText.find('branches') > -1 \
                             and messageText.find('active branches') == -1 \
                             and messageText.find('stale branches') == -1:
